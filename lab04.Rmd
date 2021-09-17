@@ -1,0 +1,111 @@
+---
+title: "Lab 4"
+author: "Sylvia Baeyens"
+date: "9/17/2021"
+output: github_document
+always_allow_html: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r packages, echo= FALSE, include= FALSE}
+#including necessary libraries
+library(data.table)
+library(dplyr)
+library(tidyverse)
+library(leaflet)
+library(R.utils)
+library(ggplot2)
+```
+
+Objective= to examine the association between weekly average dew pt temp & wind speed in 4 regions of the US
+
+# 1. Read in the Data
+
+```{r data-read, cache= TRUE}
+#download file ONLY IF it has not been downloaded previously
+if (!file.exists("../met_all.gz")) {
+  download.file("https://raw.githubusercontent.com/USCbiostats/data-science-data/master/02_met/met_all.gz", "../met_all.gz", method="libcurl", timeout = 60)}
+met <- data.table::fread("../met_all.gz")
+```
+
+# 2. Prepare the data
+```{r data-prep, cache= TRUE}
+#Remove temperatures less than -17C
+met = met[temp>-17]
+#Make sure there are no missing data in the key variables coded as 9999, 999, etc
+met[,table(is.na(temp))]
+met[,table(is.na(rh))]
+met[,table(is.na(wind.sp))]
+met[,table(is.na(vis.dist))]
+met[,table(is.na(dew.point))]
+met[,table(is.na(lat))]
+met[,table(is.na(lon))]
+met[,table(is.na(elev))]
+
+#met[elev == 9999.0, elev := na]
+
+#Generate a date variable using the functions as.Date() (hint: You will need the following to create a date paste(year, month, day, sep = "-")).
+met[, ymd := as.Date(paste(year, month, day, sep = "-"))]
+#Using the data.table::week function, keep the observations of the first week of the month.
+met[, table(week(ymd))]
+
+met = met[week(ymd) == 31]
+#Compute the mean by station of the variables temp, rh, wind.sp, vis.dist, dew.point, lat, lon, and elev.
+met_avg = met[,.(
+  temp = mean(temp,na.rm = TRUE),
+  rh = mean(rh,na.rm = TRUE),
+  wind.sp = mean(wind.sp,na.rm = TRUE),
+  vis.dist = mean(vis.dist,na.rm = TRUE),
+  dew.point = mean(dew.point,na.rm = TRUE),
+  lat = mean(lat,na.rm = TRUE),
+  lon = mean(lon,na.rm = TRUE),
+  elev = mean(elev,na.rm = TRUE)
+),by = "USAFID"]
+#Create a region variable for NW, SW, NE, SE based on lon = -98.00 and lat = 39.71 degrees
+met_avg[lat>= 39.71 & lon<= -98,region:="Northwest"]
+met_avg[lat< 39.71 & lon<= -98,region:="Southwest"]
+met_avg[lat>= 39.71 & lon> -98,region:="Northeast"]
+met_avg[lat< 39.71 & lon> -98,region:="Southeast"]
+
+met_avg[,table(region, useNA="always")]
+#Create a categorical variable for elevation as in the lecture slides
+met_avg[, elev_cat:=fifelse(elev>252,"high","low")]
+```
+
+# 3. Using geom_violin to examine wind speed & dew pt temp
+```{r}
+ggplot(met_avg, mapping = aes(y= wind.sp, x=1)) +
+  geom_violin() +
+  facet_grid(~region)
+
+ggplot(met_avg, mapping = aes(y= dew.point, x=1)) +
+  geom_violin() +
+  facet_grid(~region)
+```
+
+#4.
+```{r}
+
+```
+
+#5.
+```{r}
+
+```
+
+#6. Using stat_summary to examine mean dew point and wind speed
+```{r}
+ggplot(met_avg[!is.na(wind.sp) & !is.na(dew.point)], 
+       mapping=aes(x=region, y= wind.sp)) +
+    stat_summary(fun.data = "mean_sdl") +
+    stat_summary(fun.data = "mean_sdl", geom= "errorbar")
+```
+
+#7.
+```{r}
+temp.pal = colorNumeric(c('darkgreen','goldenrod','brown'), domain = met_avg$rh)
+```
+
