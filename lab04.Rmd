@@ -45,7 +45,7 @@ met[,table(is.na(lat))]
 met[,table(is.na(lon))]
 met[,table(is.na(elev))]
 
-#met[elev == 9999.0, elev := na]
+met[elev == 9999.0, elev := NA]
 
 #Generate a date variable using the functions as.Date() (hint: You will need the following to create a date paste(year, month, day, sep = "-")).
 met[, ymd := as.Date(paste(year, month, day, sep = "-"))]
@@ -85,27 +85,56 @@ ggplot(met_avg, mapping = aes(y= dew.point, x=1)) +
   geom_violin() +
   facet_grid(~region)
 ```
+The northeast has the greatest range of wind speed values. However, the average wind speed is larger in both western regions.
+The average dewpoint temp is greatest in the southeast region. There is a greater range of dewpoint temp values in both western regions. 
 
-#4.
+# 4. Using geom_jitter with stat_smooth between dew pt & wind speed
 ```{r}
+ggplot(met_avg, aes(y=wind.sp, x=dew.point)) +
+  geom_jitter(aes(color=region)) +
+  stat_smooth()
 
 ```
+There is a slight negative relationship between dew point and wind speed, except for at the highest dew point temperatures. This graph also confirms that the South east has the highest dew point temperature values. 
 
-#5.
+# 5. Using geom_bar
 ```{r}
-
+met_avg[] %>%
+  ggplot() +
+    geom_bar(mapping = aes(x=elev, fill=region, position = "dodge")) 
 ```
 
-#6. Using stat_summary to examine mean dew point and wind speed
+# 6. Using stat_summary to examine mean dew point and wind speed
 ```{r}
 ggplot(met_avg[!is.na(wind.sp) & !is.na(dew.point)], 
        mapping=aes(x=region, y= wind.sp)) +
     stat_summary(fun.data = "mean_sdl") +
     stat_summary(fun.data = "mean_sdl", geom= "errorbar")
-```
 
-#7.
+ggplot(met_avg[!is.na(wind.sp) & !is.na(dew.point)], 
+       mapping=aes(x=region, y= dew.point)) +
+    stat_summary(fun.data = "mean_sdl") +
+    stat_summary(fun.data = "mean_sdl", geom= "errorbar")
+```
+Dew point temperature is the temperature at which the air cannot hold any more water in gas form. 
+
+Wind speed is the max speed at which the wind flows as measured by the weather stations. In the northwest and the southwest, the average max wind speed is 3 mph (kmph?) whereas it's close to 2 mph in the northeast and southeast. 
+
+# 7. Making a map!
 ```{r}
 temp.pal = colorNumeric(c('darkgreen','goldenrod','brown'), domain = met_avg$rh)
+
+
+leaflet(met_avg) %>%
+  addProviderTiles('CartoDB.Positron') %>%
+  addCircles(
+    lat = ~lat, lng=~lon,
+                                                  # HERE IS OUR PAL!
+    label = ~paste0(round(rh,2), ' rh'), color = ~ temp.pal(rh),
+    opacity = 1, fillOpacity = 1, radius = 500
+    ) %>%
+  # And a pretty legend
+  addLegend('bottomleft', pal=temp.pal, values=met_avg$rh,
+          title='Temperature, C', opacity=1)
 ```
 
