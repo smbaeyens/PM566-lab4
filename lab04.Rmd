@@ -101,8 +101,13 @@ There is a slight negative relationship between dew point and wind speed, except
 ```{r}
 met_avg[] %>%
   ggplot() +
-    geom_bar(mapping = aes(x=elev, fill=region, position = "dodge")) 
+    geom_bar(mapping = aes(x=elev_cat, fill=region), position = "dodge") +
+    scale_fill_brewer(palette = "Pastel1") +
+    ggtitle('Visualization of Weather Stations by Elevation Category and Region') +
+    xlab('Elevation Category') +
+    ylab('Number of Weather Stations')
 ```
+At high elevation, there are between 150 and 250 weather stations in each region. The most high elevation weather stations exist in the Northeast, followed by the Southwest. At low elevation, there is a more unequal spread. There are about 500 low elevation weather stations in the Southeast and almost no low elevation stations in the Northwest.
 
 # 6. Using stat_summary to examine mean dew point and wind speed
 ```{r}
@@ -116,6 +121,7 @@ ggplot(met_avg[!is.na(wind.sp) & !is.na(dew.point)],
     stat_summary(fun.data = "mean_sdl") +
     stat_summary(fun.data = "mean_sdl", geom= "errorbar")
 ```
+
 Dew point temperature is the temperature at which the air cannot hold any more water in gas form. 
 
 Wind speed is the max speed at which the wind flows as measured by the weather stations. In the northwest and the southwest, the average max wind speed is 3 mph (kmph?) whereas it's close to 2 mph in the northeast and southeast. 
@@ -138,3 +144,22 @@ leaflet(met_avg) %>%
           title='Temperature, C', opacity=1)
 ```
 
+# 8. Using ggplot extension
+```{r}
+#downloading package first
+devtools::install_github('thomasp85/gganimate')
+library(gganimate)
+
+
+p = ggplot(met, aes(x=temp, y=wind.sp)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  # Here comes the gganimate specific bits
+  labs(title = 'USAFID: {frame_time}', x = 'Temperature', y = 'Wind Speed') +
+  transition_time(USAFID) +
+  ease_aes('linear')
+
+library(gifski)
+animate(p, renderer = gifski_renderer())
+
+```
+Gif above frame speed is irregular! not entirely sure how to fix that!
